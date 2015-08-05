@@ -12,19 +12,18 @@ Reads data from a file to create a graph structure
 """
 def readDataToGraph(fileName):
     file = open(fileName)
-    #2-d array where the columns are experiment type, gene 1, and gene 2
+    #2-d array where the columns are interaction type, gene 1, and gene 2
     rows = []
     for line in file:
         cols = line.split("\t")
         rows.append(cols)
     file.close()
-    del rows[0] #Those are headers
     graph = nx.Graph()
     for row in rows:
-        exp = row[0]
+        interaction = row[0]
         gene1 = row[1]
         gene2 = row[2]
-        if exp == "" or gene1 == "" or gene2 == "":
+        if interaction == '""' or gene1 == '""' or gene2 == '""':
             continue
         #The block of "if not" statements makes sure there are
         #no duplicate nodes or edges
@@ -37,7 +36,7 @@ def readDataToGraph(fileName):
     return graph
 
 """
-Takes a simple random sample of data to create a graph
+Takes a simple random sample of interaction data to create a graph
 
 @param fileName, the name of the file to be read
 @param sampleSize, the number of rows in the sample
@@ -45,7 +44,7 @@ Takes a simple random sample of data to create a graph
 """
 def sampleData(fileName, sampleSize):
     file = open(fileName)
-    #2-d array where the columns are experiment type, gene 1, and gene 2
+    #2-d array where the columns are interaction type, gene 1, and gene 2
     rows = []
     for line in file:
         cols = line.split("\t")
@@ -59,19 +58,19 @@ def sampleData(fileName, sampleSize):
         previousEdges = graph.edges()
         randomRowNumber = int(random.random()*len(rows))
         row = rows[randomRowNumber]
-        exp = row[0].strip()
+        interaction = row[0].strip()
         gene1 = row[1].strip()
         gene2 = row[2].strip()
-        if exp == "" or gene1 == "" or gene2 == "":
+        if interaction == '""' or gene1 == '""' or gene2 == '""':
             continue
         #The block of "if not" statements makes sure there are
         #no duplicate nodes or edges
         genesByNodeID = nx.get_node_attributes(graph, "gene") #{nodeID:geneIdentifier,...}
-        if not gene1 in genesByNodeID.values():
+        if gene1 not in genesByNodeID.values():
             graph.add_node(nodeID, gene=gene1)
             nodeID1 = nodeID
             nodeID+=1
-        if not gene2 in genesByNodeID.values():
+        if gene2 not in genesByNodeID.values():
             graph.add_node(nodeID, gene=gene2)
             nodeID2 = nodeID
             nodeID+=1
@@ -83,14 +82,14 @@ def sampleData(fileName, sampleSize):
     return graph
 
 """
-Recreates a graph to have random edges between nodes. The nodes
+Generates a graph with random edges between nodes given a pre-generated graph. The nodes
 of the original graph will be kept but any edges will be removed and replaced with
 the same number of random ones.
 
 @param graph, the original graph
 @return a graph with random edges
 """
-def randomizeEdges(graph):
+def generateRandomGraph(graph):
     numEdges = graph.size()
     nodes = graph.nodes()
     edges = graph.edges()
@@ -105,6 +104,18 @@ def randomizeEdges(graph):
         else:
             graph.add_edge(node1, node2)
             currentEdges+=1
+    return graph
+
+"""
+Generates a complete graph given a pre-generated graph. A complete graph is one where each
+node has an edge between every other node. The nodes of the original graph will be kept.
+"""
+def generateCompleteGraph(graph):
+    nodes = graph.nodes()
+    for node1 in nodes:
+        for node2 in nodes:
+            if not graph.has_edge(node1, node2) and node1 != node2:
+                graph.add_edge(node1, node2)
     return graph
 
 """
@@ -131,7 +142,7 @@ Necessary to convert the output of the MCL algorithm to an in-context output
 def convertClustersOfNodeIDsToClustersOfGeneIdentifiers(graph, clusters): #{clusterIdentifier:nodeIDs,...}
     clustersWithGeneIdentifiers = {} #{clusterIdentifier:geneIdentifiers,...}
     genesByNodeID = nx.get_node_attributes(graph, "gene") #{nodeID:geneIdentifier,...}
-    for clusterIdentifier in clusters.keys():
+    for clusterIdentifier in clusters:
         cluster = clusters[clusterIdentifier]
         clusterWithGeneIdentifiers = []
         for nodeID in cluster:
@@ -149,11 +160,11 @@ Removes duplicate clusters in a dictionary of clusters
 def removeDuplicateClusters(clusters):
     noDupes = {}
     clusterCounter = 0
-    for clusterIdentifier in clusters.keys():
-        if clusters.values()[clusterIdentifier] in noDupes.values():
-            continue
-        else:
-            noDupes[clusterCounter] = clusters.values()[clusterIdentifier]
+    for cluster in clusters.values():
+        for gene in cluster:
+            if cluster in noDupes.values():
+                continue
+            noDupes[clusterCounter] = cluster
             clusterCounter+=1
     return noDupes
 
@@ -192,7 +203,7 @@ def readPathwayData(fileName):
     for row in rows:
         pathID = row[0]
         gene = row[1]
-        if pathID in pathways.keys():
+        if pathID in pathways:
             pathways[pathID].append(gene)
         else:
             pathways[pathID] = [gene]
@@ -221,9 +232,8 @@ Will return two lists and each index has the gene in one list and the cluster id
 def assignClusterToGenes(clusters):
     allGenes = []
     clusterIdentifiers = []
-    for clusterIdentifier in clusters.keys():
-        cluster = clusters[clusterIdentifier]
-        for gene in cluster:
+    for clusterIdentifier in clusters:
+        for gene in clusters[clusterIdentifier]:
             allGenes.append(gene)
             clusterIdentifiers.append(clusterIdentifier)
     return allGenes, clusterIdentifiers
@@ -237,7 +247,7 @@ Will return a dictionary where each gene is a key and the value associated with 
 """
 def assignPathwayToGenes(pathways):
     allGenes = {}
-    for pathwayIdentifier in pathways.keys():
+    for pathwayIdentifier in pathways:
         pathway = pathways[pathwayIdentifier]
         for gene in pathway:
             allGenes[gene.strip()] = pathwayIdentifier
@@ -258,6 +268,7 @@ def compareClustersToPathways(clusters, pathways):
     secondGeneIndex = 1
     totalGenePairs = 0
     genePairsNotInPathwayData = 0
+    print "Number of Genes From Clusters:", len(allGenesFromClusters)
     while firstGeneIndex < len(allGenesFromClusters):
         while secondGeneIndex < len(allGenesFromClusters):
             totalGenePairs+=1
@@ -267,21 +278,12 @@ def compareClustersToPathways(clusters, pathways):
                 sameCluster = True
             gene1 = allGenesFromClusters[firstGeneIndex]
             gene2 = allGenesFromClusters[secondGeneIndex]
-            allGenesFromPathwayKeys = allGenesFromPathways
             #if either of the genes in the pair are not in the pathway data
-            if not gene1 in allGenesFromPathwayKeys: #<--- this is really slow
-#                if sameCluster:
-#                    confusion[2]+=1
-#                else:
-#                    confusion[3]+=1
+            if gene1 not in allGenesFromPathways:
                 secondGeneIndex+=1
                 genePairsNotInPathwayData+=1
                 continue
-            if not gene2 in allGenesFromPathwayKeys: #<--- also really slow
-#                if sameCluster:
-#                    confusion[2]+=1
-#                else:
-#                    confusion[3]+=1
+            if gene2 not in allGenesFromPathways:
                 secondGeneIndex+=1
                 genePairsNotInPathwayData+=1
                 continue
@@ -302,11 +304,11 @@ def compareClustersToPathways(clusters, pathways):
         secondGeneIndex = firstGeneIndex + 1
     print "Number of Genes Pairs Not In Pathway Data:", genePairsNotInPathwayData
     print "Number of Total Gene Pairs:", totalGenePairs
-    print "Ratio of Gene Pairs Removed to Total Gene Pairs", float(genePairsNotInPathwayData)/float(totalGenePairs)
+    print "Ratio of Gene Pairs Removed to Total Gene Pairs:", float(genePairsNotInPathwayData)/float(totalGenePairs)
     return confusion
 
 """
-Helper function to calculate analytic statistics.
+Calculates the analytic statistics.
 
 @param confusion, the confusion matrix as an array, [true positives, true negatives, false positives, false negatives]
 @return the accuracy, sensitivity, specificity, positive predictive value, and negative predictive value calculated from the confusion matrix
@@ -352,9 +354,9 @@ def displayAnalyticStats(confusion):
     fp = confusion[2]
     fn = confusion[3]
     acc, tpr, tnr, ppv, npv = calcAnalyticStats(confusion)
-    print str(tp) + "  |  " + str(fp)
-    print "-------------"
-    print str(fn) + "  |  " + str(tn)
+    print str(tp) + "\t|\t" + str(fp)
+    print "---------------------"
+    print str(fn) + "\t|\t" + str(tn)
     print "Accuracy:", acc
     print "Sensitivity:", tpr
     print "Specificity:", tnr
@@ -407,12 +409,12 @@ for i in range(100, 1000):
     print i
 """
 
-print "---------------------------------------------------"
+print "----------------------------------------------------------"
 
 begin = time.time()
 #graph = readDataToGraph("interactions.tsv")
-graph = sampleData("interactions.tsv", 3000)
-firstNodes = graph.nodes()
+originalGraph = sampleData("interactions.tsv", 1000)
+graph = originalGraph
 print "ORIGINAL GRAPH:"
 #print "finished extracting interactions"
 displayGraphStats(graph)
@@ -450,11 +452,10 @@ displayAnalyticStats(confusion)
 end = time.time()
 print "Analysis Time:", end - begin
 
-print "---------------------------------------------------"
+print "----------------------------------------------------------"
 
 begin = time.time()
-graph = randomizeEdges(graph)
-secondNodes = graph.nodes()
+graph = generateRandomGraph(originalGraph)
 print "RANDOM GRAPH:"
 #print "finished extracting interactions"
 displayGraphStats(graph)
@@ -492,10 +493,50 @@ displayAnalyticStats(confusion)
 end = time.time()
 print "Analysis Time:", end - begin
 
-print "---------------------------------------------------"
+print "----------------------------------------------------------"
 
+begin = time.time()
+graph = generateCompleteGraph(originalGraph)
+print "COMPLETE GRAPH:"
+#print "finished extracting interactions"
+displayGraphStats(graph)
+#print "displayed graph stats"
+end = time.time()
+print "Graph Creation Time:", end - begin
 
-#nx.draw_random(graph)
+print ""
+
+begin = time.time()
+#nodes in cluster are identified by the same number as they were given
+M, clusters = networkx_mcl(graph, inflate_factor = 1.8, max_loop = 60)
+#print "finished clustering algorithm"
+clusters = convertClustersOfNodeIDsToClustersOfGeneIdentifiers(graph, clusters)
+clusters = removeDuplicateClusters(clusters)
+displayClusterStats(clusters)
+#print "displayed cluster stats"
+end = time.time()
+print "Clustering Time:", end - begin
+
+print ""
+
+begin = time.time()
+pathways = readPathwayData("pathways.tsv")
+#print "finished extracting pathways"
+displayPathwayStats(pathways)
+#print "displayed pathway stats"
+confusion = compareClustersToPathways(clusters, pathways)
+#print "finished validating clusters"
+
+print ""
+
+displayAnalyticStats(confusion)
+#print "displayed analytic stats"
+end = time.time()
+print "Analysis Time:", end - begin
+
+print "----------------------------------------------------------"
+
+#nx.draw_circular(graph)
 #plt.show()
 
 #    clusters = dict with keys = [<cluster id>] values = [<vertex id>]
