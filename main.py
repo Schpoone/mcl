@@ -387,14 +387,14 @@ def appendDataToFile(sampleSize, confusion):
     file.write(str(sampleSize)+", "+str(acc)+", "+str(tpr)+", "+str(tnr)+", "+str(ppv)+", "+str(npv)+"\n")
     file.close()
 
-"""
-for i in range(100, 1000):
+
+for i in range(11, 40):
     begin = time.time()
-    graph = sampleData("interactions.tsv", i)
+    graph = sampleData("interactions.tsv", 1000)
     end = time.time()
     graphTime = end - begin
     begin = time.time()
-    M, clusters = networkx_mcl(graph, inflate_factor = 1.8, max_loop = 60)
+    M, clusters = networkx_mcl(graph, inflate_factor = float(i)/10, max_loop = 60)
     clusters = convertClustersOfNodeIDsToClustersOfGeneIdentifiers(graph, clusters)
     clusters = removeDuplicateClusters(clusters)
     end = time.time()
@@ -405,10 +405,9 @@ for i in range(100, 1000):
     appendDataToFile(i, confusion)
     end = time.time()
     compareTime = end - begin
-    appendTimesToFile(i, graphTime, clusterTime, compareTime)
-    print i
-"""
+    print float(i)/10
 
+"""
 print "----------------------------------------------------------"
 
 begin = time.time()
@@ -535,7 +534,7 @@ end = time.time()
 print "Analysis Time:", end - begin
 
 print "----------------------------------------------------------"
-
+"""
 #nx.draw_circular(graph)
 #plt.show()
 
