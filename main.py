@@ -124,10 +124,13 @@ Display some basic statistics about a graph
 @param graph
 """
 def displayGraphStats(graph):
-    print "Number of nodes:", graph.order()
-    print "Number of edges:", graph.size()
+    numNodes = graph.order()
+    numEdges = graph.size()
+    print "Number of nodes:", numNodes
+    print "Number of edges:", numEdges
     print "Number of nodes with self loops:", len(graph.nodes_with_selfloops())
     print "Average Degree:", sum(graph.degree().values())/float(graph.order())
+    print "Graph Density:", float(2*numEdges)/float(numNodes*(numNodes-1))
 
 """
 Converts a dictionary of clusters with node IDs to a dictionary of clusters
@@ -387,7 +390,7 @@ def appendDataToFile(sampleSize, confusion):
     file.write(str(sampleSize)+", "+str(acc)+", "+str(tpr)+", "+str(tnr)+", "+str(ppv)+", "+str(npv)+"\n")
     file.close()
 
-
+"""
 for i in range(11, 40):
     begin = time.time()
     graph = sampleData("interactions.tsv", 1000)
@@ -534,7 +537,7 @@ end = time.time()
 print "Analysis Time:", end - begin
 
 print "----------------------------------------------------------"
-"""
+
 #nx.draw_circular(graph)
 #plt.show()
 
